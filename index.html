@@ -135,7 +135,7 @@
 
       // Fetch and parse the M3U file
       const fetchM3UData = async () => {
-        const m3uUrl = 'us_tvpass.m3u'; // Ensure your M3U file is available at this path
+        const m3uUrl = 'sport-playlist.m3u'; // Ensure your M3U file is available at this path
         const response = await fetch(m3uUrl);
         const m3uData = await response.text();
         parseM3U(m3uData);
