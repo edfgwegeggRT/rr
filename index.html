@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Client</title>
+    <link href="https://vjs.zencdn.net/7.10.2/video-js.css" rel="stylesheet">
+    <script src="https://vjs.zencdn.net/7.10.2/video.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-hls@5.15.1/dist/videojs-contrib-hls.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        #channel-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .channel-button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            margin: 10px;
+            width: 200px;
+            height: 200px;
+            border-radius: 10px;
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .channel-button img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        #search {
+            margin-bottom: 20px;
+            padding: 10px;
+            width: 100%;
+            max-width: 300px;
+            font-size: 16px;
+        }
+
+        #stream-window {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #stream-player {
+            width: 80%;
+            height: 80%;
+            background-color: black;
+            position: relative;
+        }
+
+        #close-stream {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #ff4d4d;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>IPTV Client</h1>
+    <input type="text" id="search" placeholder="Search for a channel...">
+    <div id="channel-list"></div>
+    <div id="stream-window">
+        <div id="stream-player">
+            <button id="close-stream">Close</button>
+            <video id="video-player" class="video-js vjs-default-skin" controls></video>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const channelList = document.getElementById("channel-list");
+            const searchInput = document.getElementById("search");
+            const streamWindow = document.getElementById("stream-window");
+            const closeStreamButton = document.getElementById("close-stream");
+            let channels = [];
+
+            let player = videojs('video-player', { controls: true, autoplay: false, preload: 'auto' });
+
+            const fetchM3UData = async () => {
+                const response = await fetch('sport-playlist.m3u');
+                const m3uData = await response.text();
+                parseM3U(m3uData);
+            };
+
+            const parseM3U = (data) => {
+                const lines = data.split('\n');
+                let currentChannel = {};
+                channels = [];
+                channelList.innerHTML = '';
+
+                lines.forEach(line => {
+                    if (line.startsWith('#EXTINF:')) {
+                        const metadata = line.match(/tvg-logo="(.*?)".*?,(.*)/);
+                        if (metadata) {
+                            currentChannel = {
+                                title: metadata[2].trim(),
+                                logo: metadata[1] || 'https://via.placeholder.com/150?text=No+Logo'
+                            };
+                        }
+                    } else if (line.startsWith('http')) {
+                        currentChannel.url = line.trim();
+                        channels.push(currentChannel);
+                        displayChannel(currentChannel);
+                    }
+                });
+            };
+
+            const displayChannel = (channel) => {
+                const button = document.createElement('button');
+                button.classList.add('channel-button');
+                const img = document.createElement('img');
+                img.src = channel.logo;
+                button.appendChild(img);
+                const title = document.createElement('div');
+                title.textContent = channel.title;
+                title.style.position = 'absolute';
+                title.style.bottom = '10px';
+                title.style.left = '10px';
+                title.style.color = 'white';
+                title.style.fontWeight = 'bold';
+                button.appendChild(title);
+                button.onclick = () => openStream(channel.url);
+                channelList.appendChild(button);
+            };
+
+            const openStream = (url) => {
+                streamWindow.style.display = 'flex';
+                player.src({ type: 'application/x-mpegURL', src: url });
+                player.play();
+            };
+
+            closeStreamButton.onclick = () => {
+                streamWindow.style.display = 'none';
+                player.pause();
+            };
+
+            searchInput.addEventListener('input', (event) => {
+                const query = event.target.value.toLowerCase();
+                channelList.innerHTML = '';
+                channels.filter(channel => channel.title.toLowerCase().includes(query)).forEach(displayChannel);
+            });
+
+            await fetchM3UData();
+        });
+    </script>
+</body>
+</html>
